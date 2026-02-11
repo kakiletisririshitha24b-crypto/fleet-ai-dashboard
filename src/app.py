@@ -14,14 +14,11 @@ st.set_page_config(
 # ---------------- CUSTOM CSS ----------------
 st.markdown("""
 <style>
-
-/* Background */
 .stApp {
     background: linear-gradient(135deg, #0f172a, #020617);
     color: white;
 }
 
-/* KPI Card Styling */
 .kpi-card {
     background: rgba(255,255,255,0.05);
     padding: 20px;
@@ -36,29 +33,32 @@ st.markdown("""
     box-shadow: 0 0 25px #3b82f6;
 }
 
-/* Title */
 .dashboard-title {
     font-size: 42px;
     font-weight: bold;
     color: #60a5fa;
 }
 
-/* Subheading */
 .dashboard-sub {
     font-size: 18px;
     color: #94a3b8;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- LOAD MODELS ----------------
+# ---------------- LOAD DATA ----------------
+df = pd.read_csv("data/auto-mpg.csv")
+
+df.replace("?", pd.NA, inplace=True)
+df["horsepower"] = pd.to_numeric(df["horsepower"], errors="coerce")
+df.dropna(inplace=True)
+
+# ---------------- MODEL TRAIN / LOAD ----------------
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.cluster import KMeans
 
-# Check if models exist
 if not os.path.exists("models/fuel_model.pkl"):
 
     os.makedirs("models", exist_ok=True)
@@ -71,7 +71,7 @@ if not os.path.exists("models/fuel_model.pkl"):
     model = RandomForestRegressor()
     model.fit(X_train, y_train)
 
-    cluster_model = KMeans(n_clusters=3)
+    cluster_model = KMeans(n_clusters=3, random_state=42)
     cluster_model.fit(X)
 
     joblib.dump(model, "models/fuel_model.pkl")
@@ -80,14 +80,6 @@ if not os.path.exists("models/fuel_model.pkl"):
 else:
     model = joblib.load("models/fuel_model.pkl")
     cluster_model = joblib.load("models/cluster_model.pkl")
-
-
-# ---------------- LOAD DATA ----------------
-df = pd.read_csv("data/auto-mpg.csv")
-
-df.replace("?", pd.NA, inplace=True)
-df["horsepower"] = pd.to_numeric(df["horsepower"], errors="coerce")
-df.dropna(inplace=True)
 
 # ---------------- HEADER ----------------
 st.markdown('<div class="dashboard-title">🚚 Fleet AI Intelligence</div>', unsafe_allow_html=True)
@@ -117,9 +109,7 @@ col4.markdown(f'<div class="kpi-card"><h3>Model Accuracy</h3><h2>{round(accuracy
 
 st.divider()
 
-# =================================================
-# OVERVIEW
-# =================================================
+# ---------------- OVERVIEW ----------------
 if selected == "Overview":
 
     st.subheader("📊 Fleet Performance Overview")
@@ -129,16 +119,12 @@ if selected == "Overview":
     fig1 = px.histogram(df, x="mpg", nbins=30, template="plotly_dark")
     col1.plotly_chart(fig1, use_container_width=True)
 
-    fig2 = px.scatter(df, x="weight", y="mpg",
-                      color="cylinders",
-                      template="plotly_dark")
+    fig2 = px.scatter(df, x="weight", y="mpg", color="cylinders", template="plotly_dark")
     col2.plotly_chart(fig2, use_container_width=True)
 
     st.dataframe(df.head(20), use_container_width=True)
 
-# =================================================
-# PREDICTION
-# =================================================
+# ---------------- PREDICTION ----------------
 elif selected == "Prediction":
 
     st.subheader("🤖 Fuel Efficiency Prediction")
@@ -166,9 +152,7 @@ elif selected == "Prediction":
         st.success(f"Predicted MPG: {round(pred,2)}")
         st.info(f"Efficiency Category: {category}")
 
-# =================================================
-# SEGMENTATION
-# =================================================
+# ---------------- SEGMENTATION ----------------
 elif selected == "Segmentation":
 
     st.subheader("🔍 Fleet Segmentation")
@@ -184,31 +168,17 @@ elif selected == "Segmentation":
 
     df["Cluster Label"] = df["Cluster"].map(labels)
 
-    fig = px.scatter(
-        df,
-        x="weight",
-        y="mpg",
-        color="Cluster Label",
-        template="plotly_dark"
-    )
+    fig = px.scatter(df, x="weight", y="mpg", color="Cluster Label", template="plotly_dark")
 
     st.plotly_chart(fig, use_container_width=True)
 
-# =================================================
-# TREND
-# =================================================
+# ---------------- TREND ----------------
 elif selected == "Trend":
 
     st.subheader("📈 Efficiency Trend")
 
     trend = df.groupby("model year")["mpg"].mean().reset_index()
 
-    fig = px.line(
-        trend,
-        x="model year",
-        y="mpg",
-        markers=True,
-        template="plotly_dark"
-    )
+    fig = px.line(trend, x="model year", y="mpg", markers=True, template="plotly_dark")
 
     st.plotly_chart(fig, use_container_width=True)
