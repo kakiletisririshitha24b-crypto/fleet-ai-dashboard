@@ -53,8 +53,34 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- LOAD MODELS ----------------
-model = joblib.load("models/fuel_model.pkl")
-cluster_model = joblib.load("models/cluster_model.pkl")
+import os
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.cluster import KMeans
+
+# Check if models exist
+if not os.path.exists("models/fuel_model.pkl"):
+
+    os.makedirs("models", exist_ok=True)
+
+    X = df[['cylinders','displacement','horsepower','weight','acceleration']]
+    y = df['mpg']
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    model = RandomForestRegressor()
+    model.fit(X_train, y_train)
+
+    cluster_model = KMeans(n_clusters=3)
+    cluster_model.fit(X)
+
+    joblib.dump(model, "models/fuel_model.pkl")
+    joblib.dump(cluster_model, "models/cluster_model.pkl")
+
+else:
+    model = joblib.load("models/fuel_model.pkl")
+    cluster_model = joblib.load("models/cluster_model.pkl")
+
 
 # ---------------- LOAD DATA ----------------
 df = pd.read_csv("data/auto-mpg.csv")
